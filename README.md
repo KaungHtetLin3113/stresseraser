@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StressEraser
 
-## Getting Started
+StressEraser is a dark, playful Tamagotchi-style stress-relief game. Upload a
+photo to apply a cropped portrait to the character's face; the photo remains on
+your device. After uploading, enter a name in the header to display it beneath
+the character.
 
-First, run the development server:
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Use `1` for Hit, `2` for
+Kick, `3` for Punch, and `4` for Spit when focus is not in a form control. Drag
+the scene to rotate the character; use the reset button to restore the camera.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Cartoon character
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The character is built from stylized Three.js shapes and does not require an
+external model file. Hit plays a foam-mallet bonk with a squash, comic spark,
+and springy recovery; Kick sends in a foot while the character recoils; Punch
+sends in a cartoon boxing glove and makes the character flinch; Spit launches a
+small cartoon droplet toward the character and triggers a funny disgusted
+reaction. Uploaded JPEG, PNG, and WebP images are center-cropped to a square
+face texture and displayed on the character; the face returns to its cartoon
+features when the photo is removed.
 
-## Learn More
+## Sound assets
 
-To learn more about Next.js, take a look at the following resources:
+- `public/hit-sound.mp3` — hit sound effect.
+- `public/kick-sound.mp3` — optional kick sound effect.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Uploaded photos remain in the browser and are never sent to a server. The
+portrait is a stylized texture on the cartoon character, not 3D face
+reconstruction.
