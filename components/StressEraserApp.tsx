@@ -33,6 +33,7 @@ export default function StressEraserApp() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [characterName, setCharacterName] = useState("");
+  const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
   const [action, setAction] = useState<Action>("idle");
   const [muted, setMuted] = useState(false);
   const [soundStatus, setSoundStatus] = useState<{
@@ -45,7 +46,19 @@ export default function StressEraserApp() {
     hit: HTMLAudioElement | null;
     kick: HTMLAudioElement | null;
   }>({ hit: null, kick: null });
+  const nameDialogRef = useRef<HTMLDialogElement>(null);
   const actionLock = useRef(false);
+
+  useEffect(() => {
+    const dialog = nameDialogRef.current;
+    if (!dialog) return;
+
+    if (isNameDialogOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isNameDialogOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isNameDialogOpen]);
 
   useEffect(() => {
     if (!photo) return;
@@ -126,17 +139,20 @@ export default function StressEraserApp() {
 
     setPhotoError(null);
     setPhoto({ name: file.name, url: URL.createObjectURL(file) });
+    setIsNameDialogOpen(true);
   }, []);
 
   const removePhoto = useCallback(() => {
     setPhoto(null);
     setPhotoError(null);
     setCharacterName("");
+    setIsNameDialogOpen(false);
   }, []);
   const handlePhotoPreviewError = useCallback(() => {
     setPhoto(null);
     setPhotoError("This image could not be decoded. Choose a valid JPEG, PNG, or WebP photo.");
     setCharacterName("");
+    setIsNameDialogOpen(false);
   }, []);
 
   const playSound = useCallback((kind: "hit" | "kick") => {
@@ -249,6 +265,52 @@ export default function StressEraserApp() {
           </button>
         </div>
       </header>
+
+      <dialog
+        ref={nameDialogRef}
+        className="character-name-dialog"
+        aria-labelledby="character-name-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          setIsNameDialogOpen(false);
+        }}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (characterName.trim()) setIsNameDialogOpen(false);
+          }}
+        >
+          <h2 id="character-name-title">Name your buddy</h2>
+          <p>Give your photo character a name to get started.</p>
+          <input
+            className="character-name-dialog-input"
+            type="text"
+            value={characterName}
+            onChange={(event) => setCharacterName(event.currentTarget.value)}
+            maxLength={24}
+            placeholder="Enter a name"
+            aria-label="Character name"
+            autoFocus
+          />
+          <div className="character-name-dialog-actions">
+            <button
+              type="button"
+              className="name-dialog-skip"
+              onClick={() => setIsNameDialogOpen(false)}
+            >
+              Not now
+            </button>
+            <button
+              type="submit"
+              className="name-dialog-submit"
+              disabled={!characterName.trim()}
+            >
+              Save name
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       <section className="studio-layout" aria-label="Stress relief studio">
         <section className="character-panel" aria-label="Interactive character">

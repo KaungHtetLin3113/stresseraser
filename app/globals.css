@@ -205,6 +205,84 @@ a:focus-visible {
   border-color: rgba(226, 113, 66, 0.66);
 }
 
+dialog.character-name-dialog {
+  width: min(100%, 380px);
+  padding: 25px;
+  border: 1px solid rgba(48, 39, 55, 0.12);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 24px 80px rgba(34, 29, 38, 0.2);
+}
+
+dialog.character-name-dialog::backdrop {
+  background: rgba(34, 29, 38, 0.36);
+  backdrop-filter: blur(4px);
+}
+
+.character-name-dialog form {
+  margin: 0;
+}
+
+.character-name-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+
+.character-name-dialog p {
+  margin: 8px 0 19px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.character-name-dialog-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  outline: none;
+  background: #fff;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.character-name-dialog-input:focus {
+  border-color: rgba(226, 113, 66, 0.66);
+}
+
+.character-name-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 17px;
+}
+
+.name-dialog-skip,
+.name-dialog-submit {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.name-dialog-submit {
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--red), var(--orange));
+  color: #fff;
+}
+
+.name-dialog-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .privacy-pill {
   display: inline-flex;
   gap: 8px;

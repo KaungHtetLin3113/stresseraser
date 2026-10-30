@@ -2,8 +2,9 @@
 
 StressEraser is a dark, playful Tamagotchi-style stress-relief game. Upload a
 photo to apply a cropped portrait to the character's face; the photo remains on
-your device. After uploading, enter a name in the header to display it beneath
-the character.
+your device. After uploading, a name prompt lets you name the character; save
+the name to display it beneath the character, or skip and name it later in the
+header.
 
 ## Run locally
 
