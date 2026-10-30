@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "StressEraser | Tiny Stress Game",
-  description: "A dark, playful Tamagotchi-style stress-relief game.",
+  description: "A playful Tamagotchi-style stress-relief game with a soft, light studio.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
