@@ -13,6 +13,9 @@ type SceneProps = {
   action: CharacterAction;
   cameraReset: number;
   faceImageUrl: string | null;
+  isRestrained: boolean;
+  isKneeling: boolean;
+  punchSequence: number;
   onActionComplete: () => void;
   onPhotoTextureError: () => void;
 };
@@ -100,6 +103,9 @@ function FacePhoto({
 function CartoonCharacter({
   action,
   faceImageUrl,
+  isRestrained,
+  isKneeling,
+  punchSequence,
   onActionComplete,
   onPhotoTextureError,
 }: SceneProps) {
@@ -115,6 +121,8 @@ function CartoonCharacter({
   const rightArm = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Group>(null);
   const rightLeg = useRef<THREE.Group>(null);
+  const leftShin = useRef<THREE.Group>(null);
+  const rightShin = useRef<THREE.Group>(null);
   const sceneTime = useRef(0);
   const actionStart = useRef(0);
 
@@ -122,9 +130,12 @@ function CartoonCharacter({
     actionStart.current = sceneTime.current;
     if (action === "idle") return;
 
-    const timer = window.setTimeout(onActionComplete, 1250);
+    const timer = window.setTimeout(
+      onActionComplete,
+      isRestrained && action === "punch" ? 220 : 1250,
+    );
     return () => window.clearTimeout(timer);
-  }, [action, onActionComplete]);
+  }, [action, isRestrained, onActionComplete]);
 
   useFrame(({ clock }, delta) => {
     const time = clock.elapsedTime;
@@ -134,14 +145,17 @@ function CartoonCharacter({
       const progress = THREE.MathUtils.clamp((value - start) / (end - start), 0, 1);
       return progress * progress * (3 - 2 * progress);
     };
-    const impactTime = action === "spit" ? 0.66 : 0.34;
+    const rapidPunch = isRestrained && action === "punch";
+    const punchSide = punchSequence % 2 === 0 ? -1 : 1;
+    const punchTargetY = punchSequence % 4 < 2 ? 1.7 : 2.82;
+    const impactTime = action === "spit" ? 0.66 : rapidPunch ? 0.12 : 0.34;
     const impact = Math.exp(-(((age - impactTime) / 0.12) ** 2));
     const settle = age > 0.34
       ? Math.exp(-(age - 0.34) * 3.1) * Math.sin((age - 0.34) * 19)
       : 0;
     const windUp = smoothStep(0.02, 0.22, age) * (1 - smoothStep(0.22, 0.34, age));
-    const punchApproach = smoothStep(0.08, 0.36, age);
-    const punchRetreat = smoothStep(0.43, 0.76, age);
+    const punchApproach = smoothStep(rapidPunch ? 0.01 : 0.08, rapidPunch ? 0.12 : 0.36, age);
+    const punchRetreat = smoothStep(rapidPunch ? 0.18 : 0.43, rapidPunch ? 0.36 : 0.76, age);
     const kickApproach = smoothStep(0.08, 0.36, age);
     const kickRetreat = smoothStep(0.43, 0.76, age);
     const spitReaction = action === "spit" ? impact : 0;
@@ -153,26 +167,32 @@ function CartoonCharacter({
     const reaction = action === "idle" || spit ? 0 : impact;
 
     if (root.current) {
-      root.current.position.y =
-        -1.67 +
-        Math.sin(time * 2.2) * 0.025 * idle +
-        hit * (reaction * 0.1 + settle * 0.055) +
-        kick * (reaction * 0.018 + settle * 0.012) +
-        punch * (reaction * 0.04 + settle * 0.02) -
-        spitReaction * 0.025;
-      root.current.rotation.z =
-        Math.sin(time * 0.85) * 0.025 * idle -
-        hit * (reaction * 0.26 + settle * 0.12) +
-        kick * (reaction * 0.07 - settle * 0.035) +
-        punch * (reaction * 0.1 - settle * 0.05) +
-        spitReaction * 0.035;
-      root.current.rotation.x =
-        hit * (reaction * 0.12 + settle * 0.06) +
-        punch * (reaction * 0.06 + settle * 0.03) -
-        spitReaction * 0.04;
+      root.current.position.y = isRestrained
+        ? 1.92
+        : isKneeling
+          ? -2.05
+          : -1.67 +
+          Math.sin(time * 2.2) * 0.025 * idle +
+          hit * (reaction * 0.1 + settle * 0.055) +
+          kick * (reaction * 0.018 + settle * 0.012) +
+          punch * (reaction * 0.04 + settle * 0.02) -
+          spitReaction * 0.025;
+      root.current.rotation.z = isRestrained
+        ? Math.PI
+        : (isKneeling ? 0.08 : Math.sin(time * 0.85) * 0.025 * idle) -
+          hit * (reaction * 0.26 + settle * 0.12) +
+          kick * (reaction * 0.07 - settle * 0.035) +
+          punch * (reaction * 0.1 - settle * 0.05) +
+          spitReaction * 0.035;
+      root.current.rotation.x = isRestrained
+        ? 0
+        : hit * (reaction * 0.12 + settle * 0.06) +
+          punch * (reaction * 0.06 + settle * 0.03) -
+          spitReaction * 0.04;
     }
     if (torso.current) {
       torso.current.rotation.x =
+        (isKneeling ? 0.2 : 0) +
         hit * (reaction * 0.15 + settle * 0.07) -
         kick * (windUp * 0.04 + reaction * 0.08 + settle * 0.03);
       torso.current.rotation.z =
@@ -201,10 +221,12 @@ function CartoonCharacter({
     if (leftArm.current) {
       leftArm.current.rotation.z = THREE.MathUtils.damp(
         leftArm.current.rotation.z,
-        0.12 + hit * (windUp * 0.48 + reaction * 0.78 + settle * 0.16) +
-          kick * (reaction * 0.22 + settle * 0.06) +
-          punch * (reaction * 0.45 + settle * 0.12) +
-          spitReaction * 0.42,
+        isKneeling
+          ? 2.45
+          : 0.12 + hit * (windUp * 0.48 + reaction * 0.78 + settle * 0.16) +
+            kick * (reaction * 0.22 + settle * 0.06) +
+            punch * (reaction * 0.45 + settle * 0.12) +
+            spitReaction * 0.42,
         12,
         delta,
       );
@@ -216,10 +238,12 @@ function CartoonCharacter({
     if (rightArm.current) {
       rightArm.current.rotation.z = THREE.MathUtils.damp(
         rightArm.current.rotation.z,
-        -0.12 - hit * (windUp * 0.54 + reaction * 0.84 + settle * 0.16) -
-          kick * (reaction * 0.24 + settle * 0.06) -
-          punch * (reaction * 0.48 + settle * 0.12) -
-          spitReaction * 0.42,
+        isKneeling
+          ? -2.45
+          : -0.12 - hit * (windUp * 0.54 + reaction * 0.84 + settle * 0.16) -
+            kick * (reaction * 0.24 + settle * 0.06) -
+            punch * (reaction * 0.48 + settle * 0.12) -
+            spitReaction * 0.42,
         12,
         delta,
       );
@@ -231,11 +255,18 @@ function CartoonCharacter({
     if (leftLeg.current) {
       leftLeg.current.rotation.x =
         kick * (reaction * 0.14 + settle * 0.05);
-      leftLeg.current.rotation.z = kick * (-reaction * 0.05);
+      leftLeg.current.rotation.z = isKneeling ? -0.08 : kick * (-reaction * 0.05);
     }
     if (rightLeg.current) {
       rightLeg.current.rotation.x =
         kick * (-reaction * 0.12 - settle * 0.04);
+      rightLeg.current.rotation.z = isKneeling ? 0.08 : 0;
+    }
+    if (leftShin.current) {
+      leftShin.current.rotation.z = isKneeling ? 1.48 : 0;
+    }
+    if (rightShin.current) {
+      rightShin.current.rotation.z = isKneeling ? -1.48 : 0;
     }
     if (mallet.current) {
       const swing = smoothStep(0.04, 0.32, age);
@@ -246,12 +277,17 @@ function CartoonCharacter({
     }
     if (incomingFist.current) {
       incomingFist.current.position.set(
-        1.65 - punchApproach * 1.25 + punchRetreat * 1.25,
-        2.94,
+        rapidPunch
+          ? punchSide * (1.65 - punchApproach * 0.97 + punchRetreat * 0.97)
+          : 1.65 - punchApproach * 1.25 + punchRetreat * 1.25,
+        rapidPunch ? punchTargetY : 2.94,
         0.82,
       );
-      incomingFist.current.rotation.z = -0.12 + punchApproach * 0.12;
-      incomingFist.current.visible = action === "punch" && age < 0.86;
+      incomingFist.current.rotation.z = rapidPunch
+        ? punchSide * (-0.12 + punchApproach * 0.12)
+        : -0.12 + punchApproach * 0.12;
+      incomingFist.current.visible =
+        action === "punch" && age < (rapidPunch ? 0.4 : 0.86);
     }
     if (incomingFoot.current) {
       incomingFoot.current.position.set(
@@ -302,6 +338,20 @@ function CartoonCharacter({
 
   return (
     <group ref={root} position={[0, -1.67, 0]}>
+      {isRestrained && (
+        <>
+          {[-0.18, 0.18].map((x) => (
+            <mesh key={x} position={[x, -0.56, -0.12]}>
+              <cylinderGeometry args={[0.022, 0.022, 0.66, 8]} />
+              <meshStandardMaterial color="#b98552" roughness={0.9} />
+            </mesh>
+          ))}
+          <mesh position={[0, -0.23, 0.22]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.022, 0.022, 0.45, 8]} />
+            <meshStandardMaterial color="#b98552" roughness={0.9} />
+          </mesh>
+        </>
+      )}
       {action === "hit" && (
         <group ref={mallet} position={[1.35, 3.14, 0.55]}>
           <mesh position={[0, -0.2, 0]} castShadow>
@@ -455,20 +505,32 @@ function CartoonCharacter({
           <capsuleGeometry args={[0.19, 0.48, 6, 16]} />
           <meshStandardMaterial color="#34334a" roughness={0.86} />
         </mesh>
-        <mesh position={[-0.01, -0.86, 0.12]} castShadow>
-          <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
-          <meshStandardMaterial color="#f0a365" roughness={0.6} />
-        </mesh>
+        <group ref={leftShin} position={[0, -0.72, 0]}>
+          <mesh position={[0, -0.18, 0]} castShadow>
+            <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
+            <meshStandardMaterial color="#34334a" roughness={0.86} />
+          </mesh>
+          <mesh position={[-0.01, -0.5, 0.12]} castShadow>
+            <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
+            <meshStandardMaterial color="#f0a365" roughness={0.6} />
+          </mesh>
+        </group>
       </group>
       <group ref={rightLeg} position={[0.23, 1.02, 0]}>
         <mesh position={[0, -0.39, 0]} castShadow>
           <capsuleGeometry args={[0.19, 0.48, 6, 16]} />
           <meshStandardMaterial color="#34334a" roughness={0.86} />
         </mesh>
-        <mesh position={[0.01, -0.86, 0.12]} castShadow>
-          <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
-          <meshStandardMaterial color="#f0a365" roughness={0.6} />
-        </mesh>
+        <group ref={rightShin} position={[0, -0.72, 0]}>
+          <mesh position={[0, -0.18, 0]} castShadow>
+            <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
+            <meshStandardMaterial color="#34334a" roughness={0.86} />
+          </mesh>
+          <mesh position={[0.01, -0.5, 0.12]} castShadow>
+            <capsuleGeometry args={[0.17, 0.27, 5, 14]} />
+            <meshStandardMaterial color="#f0a365" roughness={0.6} />
+          </mesh>
+        </group>
       </group>
 
       <group ref={head} position={[0, 2.82, 0]}>
@@ -530,9 +592,11 @@ function CartoonCharacter({
 
 function SceneContents({
   cameraReset,
+  isRestrained,
   children,
 }: {
   cameraReset: number;
+  isRestrained: boolean;
   children: ReactNode;
 }) {
   const orbit = useRef<OrbitControlsImpl>(null);
@@ -545,7 +609,11 @@ function SceneContents({
     <>
       <ambientLight intensity={1.5} />
       <directionalLight position={[-4, 7, 6]} intensity={3} castShadow />
-      <pointLight position={[4, 3, 2]} intensity={1.6} color="#ff7952" />
+      <pointLight
+        position={[4, 3, 2]}
+        intensity={isRestrained ? 4 : 1.6}
+        color={isRestrained ? "#ff4b12" : "#ff7952"}
+      />
       <pointLight position={[-4, 1, -3]} intensity={1.6} color="#6658bd" />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
@@ -553,8 +621,14 @@ function SceneContents({
         receiveShadow
       >
         <circleGeometry args={[5, 64]} />
-        <meshStandardMaterial color="#19181d" roughness={0.88} />
+        <meshStandardMaterial
+          color={isRestrained ? "#8f2508" : "#19181d"}
+          emissive={isRestrained ? "#f13b08" : "#000000"}
+          emissiveIntensity={isRestrained ? 1.2 : 0}
+          roughness={0.88}
+        />
       </mesh>
+      {isRestrained && <FireFloor />}
       {children}
       <ContactShadows
         position={[0, -1.7, 0]}
@@ -583,6 +657,53 @@ function SceneContents({
   );
 }
 
+function FireFloor() {
+  const flames = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!flames.current) return;
+
+    const time = clock.elapsedTime;
+    flames.current.children.forEach((flame, index) => {
+      const pulse = 0.72 + (Math.sin(time * (8 + index % 5) + index * 2.1) + 1) * 0.28;
+      flame.scale.y = pulse;
+      flame.position.y = -1.72 + 0.46 * pulse;
+      flame.rotation.z = Math.sin(time * 3.2 + index) * 0.12;
+    });
+  });
+
+  return (
+    <group ref={flames}>
+      {Array.from({ length: 32 }, (_, index) => {
+        const angle = index * 2.399;
+        const radius = 0.75 + ((index * 37) % 100) / 42;
+        const height = 0.85 + ((index * 17) % 100) / 95;
+
+        return (
+          <mesh
+            key={index}
+            position={[
+              Math.cos(angle) * radius,
+              -1.72 + height * 0.46,
+              Math.sin(angle) * radius,
+            ]}
+            scale={[0.72 + (index % 4) * 0.12, 1, 0.72 + (index % 3) * 0.12]}
+          >
+            <coneGeometry args={[0.28, height, 7]} />
+            <meshStandardMaterial
+              color={index % 3 === 0 ? "#fff03a" : index % 2 === 0 ? "#ff9d16" : "#ff4a0b"}
+              emissive={index % 3 === 0 ? "#ffb20a" : "#f23b06"}
+              emissiveIntensity={2.2}
+              roughness={0.45}
+              toneMapped={false}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 export default function StressScene(props: SceneProps) {
   return (
     <div className="scene-canvas" role="img" aria-label="Interactive cartoon character preview">
@@ -592,7 +713,10 @@ export default function StressScene(props: SceneProps) {
         camera={{ position: [0, 1.45, 7.3], fov: 34, near: 0.1, far: 50 }}
         gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       >
-        <SceneContents cameraReset={props.cameraReset}>
+        <SceneContents
+          cameraReset={props.cameraReset}
+          isRestrained={props.isRestrained}
+        >
           <CartoonCharacter {...props} />
         </SceneContents>
       </Canvas>

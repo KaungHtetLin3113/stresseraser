@@ -26,7 +26,13 @@ sends in a cartoon boxing glove and makes the character flinch; Spit launches a
 small cartoon droplet toward the character and triggers a funny disgusted
 reaction. Uploaded JPEG, PNG, and WebP images are center-cropped to a square
 face texture and displayed on the character; the face returns to its cartoon
-features when the photo is removed.
+features when the photo is removed. After 10 completed physical strikes (Hit,
+Kick, or Punch), the character is tied with ropes and hangs upside down while
+the floor turns into a field of animated flames and a rapid automatic punch
+barrage plays for five seconds. Punches during the barrage count; after five
+seconds, the character kneels with both hands raised and pleads “I was wrong,
+plz stop torturing me anymore” for five seconds, then returns to normal and
+the strike count resets. Spit does not count.
 
 ## Sound assets
 

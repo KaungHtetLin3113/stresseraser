@@ -29,12 +29,22 @@ type SoundStatus = "checking" | "ready" | "missing" | "error";
 type Photo = { name: string; url: string };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const STRIKES_TO_RESTRAIN = 10;
+const RESTRAINT_DELAY_MS = 5_000;
+const KNEELING_DURATION_MS = 5_000;
+
 export default function StressEraserApp() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [characterName, setCharacterName] = useState("");
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
   const [action, setAction] = useState<Action>("idle");
+  const [punchSequence, setPunchSequence] = useState(0);
+  const [strikeCount, setStrikeCount] = useState(0);
+  const [isRestrained, setIsRestrained] = useState(false);
+  const [isKneeling, setIsKneeling] = useState(false);
+  const [restraintDeadline, setRestraintDeadline] = useState<number | null>(null);
+  const [restraintCountdown, setRestraintCountdown] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
   const [soundStatus, setSoundStatus] = useState<{
     hit: SoundStatus;
@@ -48,6 +58,65 @@ export default function StressEraserApp() {
   }>({ hit: null, kick: null });
   const nameDialogRef = useRef<HTMLDialogElement>(null);
   const actionLock = useRef(false);
+  const pendingStrike = useRef(false);
+  const strikeCountRef = useRef(0);
+  const restraintDeadlineRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (restraintDeadline === null) return;
+
+    const updateCountdown = () => {
+      const remainingMs = restraintDeadline - Date.now();
+      if (remainingMs <= 0) {
+        pendingStrike.current = false;
+        if (isRestrained) {
+          const kneelingDeadline = Date.now() + KNEELING_DURATION_MS;
+          restraintDeadlineRef.current = kneelingDeadline;
+          setRestraintDeadline(kneelingDeadline);
+          setRestraintCountdown(KNEELING_DURATION_MS / 1000);
+          setIsRestrained(false);
+          setIsKneeling(true);
+        } else if (isKneeling) {
+          restraintDeadlineRef.current = null;
+          setRestraintDeadline(null);
+          setRestraintCountdown(null);
+          setIsKneeling(false);
+          strikeCountRef.current = 0;
+          setStrikeCount(0);
+        }
+        return;
+      }
+
+      setRestraintCountdown(Math.ceil(remainingMs / 1000));
+    };
+
+    updateCountdown();
+    const timer = window.setInterval(updateCountdown, 100);
+    return () => window.clearInterval(timer);
+  }, [isKneeling, isRestrained, restraintDeadline]);
+
+  useEffect(() => {
+    if (!isRestrained) return;
+
+    const launchPunch = () => {
+      if (
+        actionLock.current ||
+        restraintDeadlineRef.current === null ||
+        Date.now() >= restraintDeadlineRef.current
+      ) {
+        return;
+      }
+
+      actionLock.current = true;
+      pendingStrike.current = true;
+      setPunchSequence((sequence) => sequence + 1);
+      setAction("punch");
+    };
+
+    launchPunch();
+    const interval = window.setInterval(launchPunch, 250);
+    return () => window.clearInterval(interval);
+  }, [isRestrained]);
 
   useEffect(() => {
     const dialog = nameDialogRef.current;
@@ -172,6 +241,8 @@ export default function StressEraserApp() {
     (nextAction: Exclude<Action, "idle">) => {
       if (actionLock.current || action !== "idle") return;
       actionLock.current = true;
+      pendingStrike.current =
+        nextAction === "hit" || nextAction === "kick" || nextAction === "punch";
       setAction(nextAction);
       setSoundError(null);
       if (nextAction === "hit" || nextAction === "kick") {
@@ -182,6 +253,18 @@ export default function StressEraserApp() {
   );
 
   const finishAction = useCallback(() => {
+    if (pendingStrike.current) {
+      pendingStrike.current = false;
+      const nextStrikeCount = strikeCountRef.current + 1;
+      strikeCountRef.current = nextStrikeCount;
+      setStrikeCount(nextStrikeCount);
+      if (nextStrikeCount === STRIKES_TO_RESTRAIN) {
+        const deadline = Date.now() + RESTRAINT_DELAY_MS;
+        restraintDeadlineRef.current = deadline;
+        setRestraintDeadline(deadline);
+        setIsRestrained(true);
+      }
+    }
     actionLock.current = false;
     setAction("idle");
   }, []);
@@ -314,16 +397,32 @@ export default function StressEraserApp() {
 
       <section className="studio-layout" aria-label="Stress relief studio">
         <section className="character-panel" aria-label="Interactive character">
-          <div className="scene-wrap">
+          <div className={`scene-wrap${isRestrained ? " is-fire-background" : ""}`}>
+            {isRestrained && <div className="fire-background" aria-hidden="true" />}
             <StressScene
               action={action}
               cameraReset={cameraReset}
               faceImageUrl={photo?.url ?? null}
+              isRestrained={isRestrained}
+              isKneeling={isKneeling}
+              punchSequence={punchSequence}
               onActionComplete={finishAction}
               onPhotoTextureError={handlePhotoTextureError}
             />
             <div className="scene-glow" aria-hidden="true" />
             <div className="scene-floor-glow" aria-hidden="true" />
+            <div className="strike-counter" aria-live="polite" aria-atomic="true">
+              {isRestrained
+                ? `Punch barrage: ${restraintCountdown ?? 5}s left! (${strikeCount} punches)`
+                : isKneeling
+                  ? `Kneeling: ${restraintCountdown ?? 5}s`
+                : `Strikes ${strikeCount} / ${STRIKES_TO_RESTRAIN}`}
+            </div>
+            {isKneeling && (
+              <div className="kneeling-message" role="status">
+                “I was wrong, plz stop torturing me anymore”
+              </div>
+            )}
             {characterName.trim() && (
               <div className="character-nameplate" aria-live="polite">
                 {characterName.trim()}
