@@ -23,13 +23,34 @@ async function assetExists(assetPath: string) {
 
 export async function GET() {
   const publicDirectory = path.join(process.cwd(), "public");
-  const [hitSound, kickSound] = await Promise.all([
-    assetExists(path.join(publicDirectory, "hit-sound.mp3")),
-    assetExists(path.join(publicDirectory, "kick-sound.mp3")),
+  const [
+    hitSound,
+    kickSound,
+    punchSound,
+    spitSound,
+    backgroundMusicSound,
+    kneelingMusicSound,
+    fireSound,
+  ] = await Promise.all([
+    assetExists(path.join(publicDirectory, "audio", "hit-sound.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "kick-sound.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "punch-sound.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "spit-sound.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "background-music.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "kneeling-bg-music.mp3")),
+    assetExists(path.join(publicDirectory, "audio", "fire-sound.mp3")),
   ]);
 
   return NextResponse.json(
-    { hitSound, kickSound },
+    {
+      hitSound,
+      kickSound,
+      punchSound,
+      spitSound,
+      backgroundMusicSound,
+      kneelingMusicSound,
+      fireSound,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

@@ -26,6 +26,18 @@ const StressScene = dynamic(() => import("./StressScene"), {
 
 type Action = CharacterAction;
 type SoundStatus = "checking" | "ready" | "missing" | "error";
+const SOUND_FILES = {
+  hit: "/audio/hit-sound.mp3",
+  kick: "/audio/kick-sound.mp3",
+  punch: "/audio/punch-sound.mp3",
+  spit: "/audio/spit-sound.mp3",
+  backgroundMusic: "/audio/background-music.mp3",
+  kneelingMusic: "/audio/kneeling-bg-music.mp3",
+  fire: "/audio/fire-sound.mp3",
+} as const;
+type SoundKind = keyof typeof SOUND_FILES;
+type SoundAssetStatus = Record<`${SoundKind}Sound`, boolean>;
+type EffectSound = Exclude<SoundKind, "backgroundMusic" | "kneelingMusic">;
 type Photo = { name: string; url: string };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -46,16 +58,27 @@ export default function StressEraserApp() {
   const [restraintDeadline, setRestraintDeadline] = useState<number | null>(null);
   const [restraintCountdown, setRestraintCountdown] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
-  const [soundStatus, setSoundStatus] = useState<{
-    hit: SoundStatus;
-    kick: SoundStatus;
-  }>({ hit: "checking", kick: "checking" });
+  const [soundStatus, setSoundStatus] = useState<Record<SoundKind, SoundStatus>>({
+    hit: "checking",
+    kick: "checking",
+    punch: "checking",
+    spit: "checking",
+    backgroundMusic: "checking",
+    kneelingMusic: "checking",
+    fire: "checking",
+  });
   const [soundError, setSoundError] = useState<string | null>(null);
   const [cameraReset, setCameraReset] = useState(0);
-  const audioRef = useRef<{
-    hit: HTMLAudioElement | null;
-    kick: HTMLAudioElement | null;
-  }>({ hit: null, kick: null });
+  const audioRef = useRef<Record<SoundKind, HTMLAudioElement | null>>({
+    hit: null,
+    kick: null,
+    punch: null,
+    spit: null,
+    backgroundMusic: null,
+    kneelingMusic: null,
+    fire: null,
+  });
+  const mutedRef = useRef(false);
   const nameDialogRef = useRef<HTMLDialogElement>(null);
   const actionLock = useRef(false);
   const pendingStrike = useRef(false);
@@ -96,29 +119,6 @@ export default function StressEraserApp() {
   }, [isKneeling, isRestrained, restraintDeadline]);
 
   useEffect(() => {
-    if (!isRestrained) return;
-
-    const launchPunch = () => {
-      if (
-        actionLock.current ||
-        restraintDeadlineRef.current === null ||
-        Date.now() >= restraintDeadlineRef.current
-      ) {
-        return;
-      }
-
-      actionLock.current = true;
-      pendingStrike.current = true;
-      setPunchSequence((sequence) => sequence + 1);
-      setAction("punch");
-    };
-
-    launchPunch();
-    const interval = window.setInterval(launchPunch, 250);
-    return () => window.clearInterval(interval);
-  }, [isRestrained]);
-
-  useEffect(() => {
     const dialog = nameDialogRef.current;
     if (!dialog) return;
 
@@ -138,6 +138,23 @@ export default function StressEraserApp() {
     const controller = new AbortController();
     const audioElements: HTMLAudioElement[] = [];
 
+    for (const kind of Object.keys(SOUND_FILES) as SoundKind[]) {
+      const audio = new Audio(SOUND_FILES[kind]);
+      audio.preload = "auto";
+      if (kind === "backgroundMusic" || kind === "kneelingMusic" || kind === "fire") {
+        audio.loop = true;
+        audio.volume =
+          kind === "backgroundMusic" ? 0.2 : kind === "fire" ? 0.45 : 0.3;
+      }
+      audio.addEventListener(
+        "error",
+        () => setSoundStatus((current) => ({ ...current, [kind]: "error" })),
+        { once: true },
+      );
+      audioElements.push(audio);
+      audioRef.current[kind] = audio;
+    }
+
     const prepareSounds = async () => {
       try {
         const response = await fetch("/api/assets/status", {
@@ -148,34 +165,34 @@ export default function StressEraserApp() {
           throw new Error(`Sound asset check failed (${response.status}).`);
         }
 
-        const assets: { hitSound: boolean; kickSound: boolean } =
-          await response.json();
+        const assets: SoundAssetStatus = await response.json();
         if (controller.signal.aborted) return;
 
-        for (const kind of ["hit", "kick"] as const) {
-          const exists = kind === "hit" ? assets.hitSound : assets.kickSound;
+        for (const kind of Object.keys(SOUND_FILES) as SoundKind[]) {
+          const exists = assets[`${kind}Sound`];
           if (!exists) {
             setSoundStatus((current) => ({ ...current, [kind]: "missing" }));
             continue;
           }
 
-          const audio = new Audio(
-            kind === "hit" ? "/hit-sound.mp3" : "/kick-sound.mp3",
+          setSoundStatus((current) =>
+            current[kind] === "error"
+              ? current
+              : { ...current, [kind]: "ready" },
           );
-          audio.preload = "auto";
-          audio.addEventListener(
-            "error",
-            () => setSoundStatus((current) => ({ ...current, [kind]: "error" })),
-            { once: true },
-          );
-          audioElements.push(audio);
-          audioRef.current[kind] = audio;
-          setSoundStatus((current) => ({ ...current, [kind]: "ready" }));
         }
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error("Could not check the sound assets.", error);
-        setSoundStatus({ hit: "error", kick: "error" });
+        setSoundStatus({
+          hit: "error",
+          kick: "error",
+          punch: "error",
+          spit: "error",
+          backgroundMusic: "error",
+          kneelingMusic: "error",
+          fire: "error",
+        });
       }
     };
 
@@ -188,7 +205,15 @@ export default function StressEraserApp() {
         audio.removeAttribute("src");
         audio.load();
       });
-      audioRef.current = { hit: null, kick: null };
+      audioRef.current = {
+        hit: null,
+        kick: null,
+        punch: null,
+        spit: null,
+        backgroundMusic: null,
+        kneelingMusic: null,
+        fire: null,
+      };
     };
   }, []);
 
@@ -224,8 +249,8 @@ export default function StressEraserApp() {
     setIsNameDialogOpen(false);
   }, []);
 
-  const playSound = useCallback((kind: "hit" | "kick") => {
-    if (muted) return;
+  const playSound = useCallback((kind: EffectSound) => {
+    if (mutedRef.current) return;
     const audio = audioRef.current[kind];
     if (!audio) return;
 
@@ -235,7 +260,81 @@ export default function StressEraserApp() {
       console.warn(`The ${kind} sound could not be played.`, error);
       setSoundError("Sound playback was blocked by your browser. The action still works.");
     });
-  }, [muted]);
+  }, []);
+
+  const playMusic = useCallback(() => {
+    if (mutedRef.current) return;
+
+    const activeMusic = isKneeling ? "kneelingMusic" : "backgroundMusic";
+    const inactiveMusic = isKneeling ? "backgroundMusic" : "kneelingMusic";
+    const audio = audioRef.current[activeMusic];
+    if (!audio) return;
+
+    audioRef.current[inactiveMusic]?.pause();
+    if (!audio.paused) return;
+
+    void audio.play().catch((error: unknown) => {
+      console.warn("The background music could not be played.", error);
+      setSoundError("Audio playback was blocked by your browser.");
+    });
+  }, [isKneeling]);
+
+  const toggleMuted = useCallback(() => {
+    const nextMuted = !mutedRef.current;
+    mutedRef.current = nextMuted;
+    setMuted(nextMuted);
+
+    if (nextMuted) {
+      for (const audio of Object.values(audioRef.current)) {
+        audio?.pause();
+      }
+      return;
+    }
+    playMusic();
+    if (isRestrained) playSound("fire");
+  }, [isRestrained, playMusic, playSound]);
+
+  useEffect(() => {
+    playMusic();
+  }, [isKneeling, playMusic]);
+
+  useEffect(() => {
+    const fireSound = audioRef.current.fire;
+    if (!fireSound) return;
+
+    if (isRestrained) {
+      playSound("fire");
+    } else {
+      fireSound.pause();
+      fireSound.currentTime = 0;
+    }
+
+    return () => fireSound.pause();
+  }, [isRestrained, playSound]);
+
+  useEffect(() => {
+    if (!isRestrained) return;
+
+    const launchPunch = () => {
+      if (
+        actionLock.current ||
+        restraintDeadlineRef.current === null ||
+        Date.now() >= restraintDeadlineRef.current
+      ) {
+        return;
+      }
+
+      actionLock.current = true;
+      pendingStrike.current = true;
+      setPunchSequence((sequence) => sequence + 1);
+      setAction("punch");
+      playSound("punch");
+    };
+
+    launchPunch();
+    const interval = window.setInterval(launchPunch, 250);
+    return () => window.clearInterval(interval);
+  }, [isRestrained, playSound]);
 
   const runAction = useCallback(
     (nextAction: Exclude<Action, "idle">) => {
@@ -245,11 +344,13 @@ export default function StressEraserApp() {
         nextAction === "hit" || nextAction === "kick" || nextAction === "punch";
       setAction(nextAction);
       setSoundError(null);
-      if (nextAction === "hit" || nextAction === "kick") {
+      playMusic();
+      if (nextAction === "hit" || nextAction === "kick" ||
+          nextAction === "punch" || nextAction === "spit") {
         playSound(nextAction);
       }
     },
-    [action, playSound],
+    [action, playMusic, playSound],
   );
 
   const finishAction = useCallback(() => {
@@ -274,11 +375,9 @@ export default function StressEraserApp() {
     );
   }, []);
 
-  const hasSoundWarning =
-    soundStatus.hit === "missing" ||
-    soundStatus.kick === "missing" ||
-    soundStatus.hit === "error" ||
-    soundStatus.kick === "error";
+  const hasSoundWarning = Object.values(soundStatus).some(
+    (status) => status === "missing" || status === "error",
+  );
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -336,7 +435,7 @@ export default function StressEraserApp() {
           <button
             type="button"
             className="icon-button sound-toggle"
-            onClick={() => setMuted((value) => !value)}
+            onClick={toggleMuted}
             aria-label={muted ? "Turn sound on" : "Mute sound"}
             title={muted ? "Turn sound on" : "Mute sound"}
           >
@@ -418,11 +517,6 @@ export default function StressEraserApp() {
                   ? `Kneeling: ${restraintCountdown ?? 5}s`
                 : `Strikes ${strikeCount} / ${STRIKES_TO_RESTRAIN}`}
             </div>
-            {isKneeling && (
-              <div className="kneeling-message" role="status">
-                “I was wrong, plz stop torturing me anymore”
-              </div>
-            )}
             {characterName.trim() && (
               <div className="character-nameplate" aria-live="polite">
                 {characterName.trim()}

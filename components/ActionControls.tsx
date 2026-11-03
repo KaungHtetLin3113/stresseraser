@@ -3,8 +3,8 @@
 import {
   Droplet,
   Footprints,
-  Hand,
   HandFist,
+  Hammer,
   LoaderCircle,
   RotateCcw,
 } from "lucide-react";
@@ -46,7 +46,7 @@ export default function ActionControls({
           {action === "hit" ? (
             <LoaderCircle className="button-icon is-spinning" size={18} aria-hidden="true" />
           ) : (
-            <Hand className="button-icon" size={18} aria-hidden="true" />
+            <Hammer className="button-icon" size={18} aria-hidden="true" />
           )}
           <span>Hit</span>
         </button>

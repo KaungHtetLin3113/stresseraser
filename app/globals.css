@@ -815,46 +815,6 @@ dialog.character-name-dialog::backdrop {
   pointer-events: none;
 }
 
-.kneeling-message {
-  position: absolute;
-  z-index: 3;
-  top: 40%;
-  left: 4%;
-  width: min(40%, 230px);
-  padding: 9px 12px;
-  border: 1px solid rgba(48, 39, 55, 0.14);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 26px rgba(55, 41, 66, 0.2);
-  color: #38333d;
-  font-size: clamp(11px, 1.6vw, 14px);
-  font-weight: 700;
-  line-height: 1.4;
-  text-align: center;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.kneeling-message::before {
-  position: absolute;
-  top: 18px;
-  right: -8px;
-  width: 14px;
-  height: 14px;
-  background: #fff;
-  content: "";
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-}
-
-@media (max-width: 650px) {
-  .kneeling-message {
-    left: 3%;
-    width: min(46%, 190px);
-    padding: 8px 10px;
-    font-size: 11px;
-  }
-}
-
 .scene-caption {
   position: absolute;
   z-index: 2;

@@ -30,14 +30,21 @@ features when the photo is removed. After 10 completed physical strikes (Hit,
 Kick, or Punch), the character is tied with ropes and hangs upside down while
 the floor turns into a field of animated flames and a rapid automatic punch
 barrage plays for five seconds. Punches during the barrage count; after five
-seconds, the character kneels with both hands raised and pleads “I was wrong,
-plz stop torturing me anymore” for five seconds, then returns to normal and
-the strike count resets. Spit does not count.
+seconds, the character kneels with both hands raised for five seconds, then
+returns to normal and the strike count resets. Spit does not count.
 
 ## Sound assets
 
-- `public/hit-sound.mp3` — hit sound effect.
-- `public/kick-sound.mp3` — optional kick sound effect.
+- Audio files are stored in `public/audio/`:
+  - `hit-sound.mp3` — Hit action.
+  - `kick-sound.mp3` — Kick action.
+  - `punch-sound.mp3` — Punch action and the upside-down punch barrage.
+  - `spit-sound.mp3` — Spit action.
+  - `background-music.mp3` — looping regular background music.
+  - `kneeling-bg-music.mp3` — looping music during the kneeling phase.
+  - `fire-sound.mp3` — looping fire effect during the upside-down phase.
+- The header sound button mutes and unmutes effects and music. Browsers may
+  wait for the first action or sound-button click before allowing music playback.
 
 Uploaded photos remain in the browser and are never sent to a server. The
 portrait is a stylized texture on the cartoon character, not 3D face

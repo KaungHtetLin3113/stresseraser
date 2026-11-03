@@ -7,7 +7,12 @@ import { useEffect, useRef, useState } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { ReactNode } from "react";
 
-export type CharacterAction = "idle" | "hit" | "kick" | "punch" | "spit";
+export type CharacterAction =
+  | "idle"
+  | "hit"
+  | "kick"
+  | "punch"
+  | "spit";
 
 type SceneProps = {
   action: CharacterAction;
@@ -458,7 +463,6 @@ function CartoonCharacter({
           ))}
         </group>
       )}
-
       <group ref={torso}>
         <mesh position={[0, 1.72, 0]} castShadow>
           <capsuleGeometry args={[0.43, 0.72, 8, 20]} />
